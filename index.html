@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>PRO Neon Chat</title>
+
+<style>
+body{
+    margin:0;
+    font-family:Arial;
+    background:#0a0a0a;
+    color:white;
+    text-align:center;
+    overflow:hidden;
+}
+
+/* RGB ARCOIRIS */
+@keyframes rgbBorder {
+0%{border-color:red;}
+25%{border-color:yellow;}
+50%{border-color:cyan;}
+75%{border-color:magenta;}
+100%{border-color:red;}
+}
+
+.container{
+    margin-top:40px;
+}
+
+input{
+    padding:10px;
+    margin:5px;
+    border:2px solid cyan;
+    border-radius:5px;
+    background:#111;
+    color:white;
+}
+
+button{
+    padding:10px 20px;
+    margin:5px;
+    border:2px solid cyan;
+    border-radius:5px;
+    background:black;
+    color:cyan;
+    cursor:pointer;
+    font-weight:bold;
+    animation: rgbBorder 5s infinite linear;
+}
+
+.chat-box{
+    width:70%;
+    height:300px;
+    background:#111;
+    margin:20px auto;
+    overflow-y:auto;
+    padding:10px;
+    border-radius:10px;
+    border:2px solid cyan;
+}
+
+.users-box{
+    width:20%;
+    height:300px;
+    background:#111;
+    position:absolute;
+    right:20px;
+    top:150px;
+    overflow-y:auto;
+    border-radius:10px;
+    border:2px solid magenta;
+}
+
+.message{
+    text-align:left;
+    margin:5px 0;
+}
+
+#searchBox{
+    margin-top:20px;
+}
+</style>
+</head>
+<body>
+
+<div id="login" class="container">
+    <h2>Neon Chat PRO</h2>
+    <input type="text" id="username" placeholder="Tu nombre">
+    <input type="number" id="server" placeholder="Número servidor">
+    <br>
+    <button onclick="joinServer()">Entrar</button>
+</div>
+
+<div id="chatUI" style="display:none;">
+    <h2 id="serverTitle"></h2>
+
+    <input type="number" id="searchBox" placeholder="Buscar servidor">
+    <button onclick="searchServer()">Buscar</button>
+
+    <div class="chat-box" id="chatBox"></div>
+
+    <input type="text" id="messageInput" placeholder="Escribe mensaje">
+    <button onclick="sendMessage()">Enviar</button>
+
+    <div class="users-box" id="usersBox">
+        <h4>Usuarios</h4>
+    </div>
+</div>
+
+<audio id="msgSound">
+<source src="https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg">
+</audio>
+
+<!-- FIREBASE -->
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+<script>
+/* PEGA TU CONFIG AQUÍ */
+var firebaseConfig = {
+  apiKey: "TU_API_KEY",
+  authDomain: "TU_AUTH_DOMAIN",
+  databaseURL: "TU_DATABASE_URL",
+  projectId: "TU_PROJECT_ID",
+  storageBucket: "TU_STORAGE_BUCKET",
+  messagingSenderId: "TU_MSG_ID",
+  appId: "TU_APP_ID"
+};
+
+firebase.initializeApp(firebaseConfig);
+var database = firebase.database();
+
+let currentUser = "";
+let currentServer = "";
+
+function joinServer(){
+    currentUser = document.getElementById("username").value;
+    let serverNumber = document.getElementById("server").value;
+
+    if(!currentUser || !serverNumber){
+        alert("Completa datos");
+        return;
+    }
+
+    currentServer = "servers/" + serverNumber;
+
+    document.getElementById("login").style.display="none";
+    document.getElementById("chatUI").style.display="block";
+    document.getElementById("serverTitle").innerText="Servidor #" + serverNumber;
+
+    database.ref(currentServer + "/users/" + currentUser).set(true);
+
+    listenMessages();
+    listenUsers();
+}
+
+function sendMessage(){
+    let msg = document.getElementById("messageInput").value;
+    if(msg==="") return;
+
+    database.ref(currentServer + "/messages").push({
+        user: currentUser,
+        text: msg
+    });
+
+    document.getElementById("messageInput").value="";
+}
+
+function listenMessages(){
+    database.ref(currentServer + "/messages").on("child_added", function(snapshot){
+        let data = snapshot.val();
+        let chatBox = document.getElementById("chatBox");
+
+        chatBox.innerHTML += 
+        "<div class='message'><b>"+data.user+":</b> "+data.text+"</div>";
+
+        chatBox.scrollTop = chatBox.scrollHeight;
+        document.getElementById("msgSound").play();
+    });
+}
+
+function listenUsers(){
+    database.ref(currentServer + "/users").on("value", function(snapshot){
+        let usersBox = document.getElementById("usersBox");
+        usersBox.innerHTML="<h4>Usuarios</h4>";
+
+        snapshot.forEach(function(child){
+            usersBox.innerHTML += "<div>"+child.key+"</div>";
+        });
+    });
+}
+
+function searchServer(){
+    let serverNumber = document.getElementById("searchBox").value;
+    if(serverNumber==="") return;
+
+    document.getElementById("server").value=serverNumber;
+    joinServer();
+}
+</script>
+
+</body>
+</html>
